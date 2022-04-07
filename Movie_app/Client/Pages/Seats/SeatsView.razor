@@ -1,0 +1,278 @@
+﻿@page "/SeatsView"
+@using CsvHelper
+@using Movie_app.Client.Models
+@using Newtonsoft.Json
+@inject IJSRuntime JSRuntime
+@using System.IO
+@using System.Globalization
+@inject HttpClient Http
+
+
+<button class="btn btn-success mb-3" @onclick="@(() => _Seat = new Seat())" data-toggle="modal" data-target="#exampleModal"><i class="fas fa-plus"></i> Agregar Asiento</button>
+<div class="card">
+    <div class="card-header">
+        <div class="row">
+            <div class="col">
+                <h2>Mantenimento de asientos</h2>
+            </div>
+            <div class="col">
+                <button class="btn btn-primary" style="float:right;" @onclick="ExportarCSV"><i class="fas fa-print"></i> Exportar</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Seats == null)
+        {
+            <h3>Loading...</h3>
+        }
+        else
+        {
+            <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" @ref="GridSeat" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+        Data="@Seats" TItem="Seat" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        <Columns>
+            <RadzenDataGridColumn TItem="Seat" Property="SeatCode" Title="Codigo" Frozen="true" Width="70px" />
+            <RadzenDataGridColumn TItem="Seat" Property="IsAvailable" Title="Estado" Width="60px">
+                <Template Context="_seat">
+                            @if (_seat.IsAvailable)
+                            {
+                                <span>Disponible</span>
+                            }
+                            else
+                            {
+                                <span>Ocupado</span>
+                            }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Seat" Property="RoomNumber" Title="Numero de sala" Width="50px"/>
+            <RadzenDataGridColumn TItem="Seat" Title="Opciones" Width="65px" Filterable=false>
+                
+                <Template Context="_seat">
+                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" data-toggle="modal" data-target="#ModalEdit" Class="m-1" Click="@(args => fillData(_seat))" @onclick:stopPropagation="true">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" data-toggle="modal" data-target="#ModalDelete" Size="ButtonSize.Medium" Class="m-1" Click="@(args => fillData(_seat))"  @onclick:stopPropagation="true">
+                    </RadzenButton>
+                </Template>
+                <EditTemplate Context="_seat">
+                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@(args => fillData(_seat))">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Class="m-1" Click="@(args => fillData(_seat))">
+                    </RadzenButton>
+                </EditTemplate>
+                
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+        }
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Agregar Asiento</h5>
+      </div>
+      <div class="modal-body">
+          <EditForm Model=_Seat OnValidSubmit=SendSeat>
+              <DataAnnotationsValidator />
+                <div class="form-group">
+                            <label>Codigo de asiento</label>
+                            <InputText type="text" @bind-Value=_Seat.SeatCode class="form-control" placeholder="Codigo de asiento"></InputText>
+                            <ValidationMessage For= "@(() => _Seat.SeatCode)"/>
+                </div>
+                <div class="form-group">
+                            <label>Numero de sala</label>
+                            <InputSelect @bind-Value=_Seat.RoomNumber class="form-control">
+                                               <option value="" selected disabled>Seleccione una sala</option>
+                                               <option value="1">Sala #1</option>
+                                               <option value="2">Sala #2</option>
+                                               <option value="3">Sala #3</option>
+                                               <option value="4">Sala #4</option>
+                                               <option value="5">Sala #5</option>
+                                               <option value="6">Sala #6</option>
+                                               <option value="7">Sala #7</option>
+                              </InputSelect>
+                            <ValidationMessage For= "@(() => _Seat.RoomNumber)"/>
+                </div>
+                 @if (IsValid)
+                {
+                    <div class="alert alert-success mt-2" role="alert">
+                        Asiento agregada!
+                    </div>
+                }
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                 </div>    
+          </EditForm>
+      </div>
+           
+        </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="ModalEdit" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Editar Asiento</h5>
+      </div>
+      <div class="modal-body">
+          <EditForm Model=_Seat OnValidSubmit=EditSeat>
+              <DataAnnotationsValidator />
+                <div class="form-group">
+                            <label>Codigo de asiento</label>
+                            <InputText type="text" @bind-Value=_Seat.SeatCode class="form-control" placeholder="Codigo de asiento"></InputText>
+                            <ValidationMessage For= "@(() => _Seat.SeatCode)"/>
+                </div>
+                <div class="form-group">
+                            <label>Numero de sala</label>
+                            <InputSelect @bind-Value=_Seat.RoomNumber class="form-control">
+                                               <option value="" selected disabled>Seleccione una sala</option>
+                                               <option value="1">Sala #1</option>
+                                               <option value="2">Sala #2</option>
+                                               <option value="3">Sala #3</option>
+                                               <option value="4">Sala #4</option>
+                                               <option value="5">Sala #5</option>
+                                               <option value="6">Sala #6</option>
+                                               <option value="7">Sala #7</option>
+                              </InputSelect>
+                            <ValidationMessage For= "@(() => _Seat.RoomNumber)"/>
+                </div>
+                 @if (IsValid)
+                {
+                    <div class="alert alert-warning mt-2" role="alert">
+                        Asiento editado!
+                    </div>
+                }
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+                    <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                 </div>    
+          </EditForm>
+      </div>
+           
+        </div>
+  </div>
+</div>
+
+<!-- Modal eliminar-->
+<div class="modal fade" id="ModalDelete" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Eliminar pelicula</h5>
+      </div>
+      <div class="modal-body">
+       <h2>Esta seguro que desea eliminar el asiento @_Seat.SeatCode?</h2>
+        @if (IsValid)
+        {
+            <div class="alert alert-warning mt-2" role="alert">
+                 Asiento Eliminada!
+            </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+        <button type="button" class="btn btn-danger" @onclick="DeleteSeat">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@code {
+    RadzenDataGrid<Seat> GridSeat;
+    List<Seat> Seats;
+    List<Seat> CsvData = new List<Seat>();
+    bool IsValid = false;
+    Seat _Seat = new Seat();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Seats = await Http.GetFromJsonAsync<List<Seat>>("https://localhost:7297/api/Seats");
+    }
+    async Task SendSeat()
+    {
+        try
+        {
+            _Seat.IsAvailable = true;
+            string json = JsonConvert.SerializeObject(_Seat);
+            StringContent httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var responses = await Http.PostAsync("https://localhost:7297/api/Seats", httpContent);
+            await Reload();
+            _Seat= new Seat();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+    async Task EditSeat()
+    {
+        try
+        {
+            string json = JsonConvert.SerializeObject(_Seat);
+            StringContent httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var responses = await Http.PutAsync("https://localhost:7297/api/Seats", httpContent);
+            await Reload();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+    async Task DeleteSeat()
+    {
+        try
+        {
+            Seats.Remove(_Seat);
+            var responses = await Http.DeleteAsync($"https://localhost:7297/api/Seats/{_Seat.Id}");
+            await Reload();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+
+    async Task Reload()
+    {
+        Seats = await Http.GetFromJsonAsync<List<Seat>>("https://localhost:7297/api/Seats");
+        await GridSeat.Reload();
+    }
+
+    void fillData(Seat seat)
+    {
+        _Seat = seat; 
+    }
+    private void ExportarCSV()
+    {
+        CsvData.Clear();
+        foreach (var i in Seats)
+        {
+                CsvData.Add(i);
+        }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var writer = new StreamWriter(memoryStream))
+                {
+                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    {
+                        csv.WriteRecords(CsvData);
+                    }
+
+                    var arr = memoryStream.ToArray();
+                    JSRuntime.InvokeAsync<object>("saveAsFile",
+                    "asientos.csv",
+                    Convert.ToBase64String(arr));
+                }
+            }
+    }
+}

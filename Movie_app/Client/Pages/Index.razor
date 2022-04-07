@@ -1,0 +1,67 @@
+﻿@page "/"
+@using Newtonsoft.Json
+@using Movie_app.Client.Models
+@inject HttpClient Http
+<style>
+    .center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      width: 75%;
+    }
+</style>
+<div class="card">
+    <div class="card-header">
+        <h2>Bienvenido a Caribbean Cinema management</h2>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-9">
+                <img src="images/caribbean logo.jpg" class="img-fluid center" style="width: 100%;"/>
+            </div>
+            <div class="col-3">
+                @if(Movies != null && Seats != null){
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Peliculas registradas</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 style="text-align:center; font-size:84px; color: green;">@Movies.Count()</h1>
+                        </div>
+                    </div>
+
+                    <div class="card mt-2">
+                        <div class="card-header">
+                            <h4>Asientos disponibles</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 style="text-align:center;font-size:84px; color: green;">@avalibleSeats</h1>
+                        </div>
+                    </div>
+                }
+                else{
+                  <h2>Loading...</h2> 
+                }
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+    List<Movie> Movies;
+    List<Seat> Seats;
+    int avalibleSeats; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        Movies = await Http.GetFromJsonAsync<List<Movie>>("https://localhost:7297/api/Movies");
+        Seats = await Http.GetFromJsonAsync<List<Seat>>("https://localhost:7297/api/Seats");
+
+        var query = from st in Seats
+                    where st.IsAvailable == true
+                    select st;
+
+        avalibleSeats = query.Count();
+    }
+}

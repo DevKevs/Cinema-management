@@ -1,0 +1,375 @@
+﻿@page "/MovieView"
+@using CsvHelper
+@using Movie_app.Client.Models
+@using Newtonsoft.Json
+@inject IJSRuntime JSRuntime
+@using System.IO
+@using System.Globalization
+@inject HttpClient Http
+
+<button class="btn btn-success mb-3" @onclick="@(() => _Movie = new Movie())" data-toggle="modal" data-target="#exampleModal"><i class="fas fa-plus"></i> Agregar Pelicula</button>
+<div class="card">
+    <div class="card-header">
+        <div class="row">
+            <div class="col">
+                <h2>Mantenimento de peliculas</h2>
+            </div>
+            <div class="col">
+                <button class="btn btn-primary" style="float:right;" @onclick="ExportarCSV"><i class="fas fa-print"></i> Exportar</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Movies == null)
+        {
+            <h3>Loading...</h3>
+        }
+        else
+        {
+            <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" @ref="GridMovie" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+        Data="@Movies" TItem="Movie" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        <Columns>
+            <RadzenDataGridColumn TItem="Movie" Property="Name" Title="Titulo" Frozen="true" Width="70px" />
+            <RadzenDataGridColumn TItem="Movie" Property="ReleaseDate" Title="Estreno" Width="60px"/>
+            <RadzenDataGridColumn TItem="Movie" Property="Gender" Title="Genero" Width="50px"/>
+            <RadzenDataGridColumn TItem="Movie" Property="TicketPrice" Title="Precio" Width="50px"/>
+            <RadzenDataGridColumn TItem="Movie" Property="Duration" Title="Duracion" Width="60px"/>
+            <RadzenDataGridColumn TItem="Movie" Property="Photo" Title="Foto" Width="50px">
+                <Template Context="_movie">
+                    <img src="@_movie.Photo" width=70 height=90/>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Movie" Property="Sinopsis" Title="Sinopsis" Width="70px"/>
+            <RadzenDataGridColumn TItem="Movie" Title="Opciones" Width="65px" Filterable=false>
+                
+                <Template Context="_movie">
+                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" data-toggle="modal" data-target="#ModalEdit" Class="m-1" Click="@(args => fillData(_movie))" @onclick:stopPropagation="true">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" data-toggle="modal" data-target="#ModalDelete" Size="ButtonSize.Medium" Class="m-1" Click="@(args => fillData(_movie))"  @onclick:stopPropagation="true">
+                    </RadzenButton>
+                </Template>
+                <EditTemplate Context="_movie">
+                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Class="m-1" Click="@(args => fillData(_movie))">
+                    </RadzenButton>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Class="m-1" Click="@(args => fillData(_movie))">
+                    </RadzenButton>
+                </EditTemplate>
+                
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+        }
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Agregar pelicula</h5>
+      </div>
+      <div class="modal-body">
+          <EditForm Model=_Movie OnValidSubmit=SendMovie>
+              <DataAnnotationsValidator />
+                <div class="@(_Movie.Photo != null ? "row":"")">
+                    <div class="col">
+                         <div class="form-group">
+                            <label>Titulo</label>
+                            <InputText type="text" @bind-Value=_Movie.Name class="form-control" placeholder="Titulo"></InputText>
+                            <ValidationMessage For= "@(() => _Movie.Name)"/>
+                         </div>
+                         <div class="row">
+                             <div class="col">
+                                     <div class="form-group">
+                                          <label>Genero</label>
+                                           <InputSelect @bind-Value=_Movie.Gender class="form-control">
+                                               <option value="" selected disabled>Seleccione un genero</option>
+                                               <option value="Accion">Accion</option>
+                                               <option value="Comedia">Comedia</option>
+                                               <option value="Terror">Terror</option>
+                                               <option value="Romance">Romance</option>
+                                               <option value="Ciencia Ficcion">Ciencia Ficcion</option>
+                                           </InputSelect>
+                                            <ValidationMessage For= "@(() => _Movie.Gender)"/>
+                                    </div>
+                             </div>
+                             <div class="col">
+                                  <div class="form-group">
+                                    <label>Duracion de la pelicula</label>
+                                    <InputText type="text" @bind-Value=_Movie.Duration class="form-control" placeholder="Duracion de la pelicula"></InputText>
+                                    <ValidationMessage For= "@(() => _Movie.Duration)"/>
+                                </div>
+                            </div>
+                         </div>
+                         
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                <label>Fecha de estreno</label>
+                                <RadzenDatePicker @bind-Value=@value DateFormat="d" Change=@(args => OnChange()) Class="w-100" />
+                                <ValidationMessage For= "@(() =>_Movie.ReleaseDate)"/>
+                            </div>
+                        </div>
+                             <div class="col">
+                                  <div class="form-group">
+                                    <label>Precio de ticket</label>
+                                    <InputNumber type="number" @bind-Value=_Movie.TicketPrice class="form-control" placeholder="Precio de boleta"></InputNumber>
+                                    <ValidationMessage For= "@(() => _Movie.TicketPrice)"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                           <label>Sinopsis</label>
+                            <InputTextArea type="text" @bind-Value=_Movie.Sinopsis class="form-control" placeholder="Sinopsis"></InputTextArea>
+                            <ValidationMessage For= "@(() => _Movie.Sinopsis)"/>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <label>Imagen</label>
+                        <InputFile OnChange="@HandleFileSelected" class="form-control"></InputFile>
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                             @if(_Movie.Photo != null){
+                            
+                              <img src="@_Movie.Photo" style="width: 70%; height: 270px" class="img-fluid mt-2"/>   
+                               }
+                        </div>
+                        
+                    </div>
+                </div>
+                 @if (IsValid)
+                {
+                    <div class="alert alert-success mt-2" role="alert">
+                        Pelicula agregada!
+                    </div>
+                }
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                 </div>
+          </EditForm>
+      </div>
+           
+        </div>
+  </div>
+</div>
+
+<!-- Modal editar-->
+<div class="modal fade" id="ModalEdit" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Editar pelicula</h5>
+      </div>
+      <div class="modal-body">
+          <EditForm Model=_Movie OnValidSubmit=EditMovie>
+              <DataAnnotationsValidator />
+                <div class="@(_Movie.Photo != null ? "row":"")">
+                    <div class="col">
+                         <div class="form-group">
+                            <label>Titulo</label>
+                            <InputText type="text" @bind-Value=_Movie.Name class="form-control" placeholder="Titulo"></InputText>
+                            <ValidationMessage For= "@(() => _Movie.Name)"/>
+                         </div>
+                         <div class="row">
+                             <div class="col">
+                                     <div class="form-group">
+                                          <label>Genero</label>
+                                           <InputSelect @bind-Value=_Movie.Gender class="form-control">
+                                               <option value="" selected disabled>Seleccione un genero</option>
+                                               <option value="Accion">Accion</option>
+                                               <option value="Comedia">Comedia</option>
+                                               <option value="Terror">Terror</option>
+                                               <option value="Romance">Romance</option>
+                                               <option value="Ciencia Ficcion">Ciencia Ficcion</option>
+                                           </InputSelect>
+                                            <ValidationMessage For= "@(() => _Movie.Gender)"/>
+                                    </div>
+                             </div>
+                             <div class="col">
+                                  <div class="form-group">
+                                    <label>Duracion de la pelicula</label>
+                                    <InputText type="text" @bind-Value=_Movie.Duration class="form-control" placeholder="Duracion de la pelicula"></InputText>
+                                    <ValidationMessage For= "@(() => _Movie.Duration)"/>
+                                </div>
+                            </div>
+                         </div>
+                         
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                <label>Fecha de estreno</label>
+                                <RadzenDatePicker @bind-Value=@value DateFormat="d" Change=@(args => OnChange()) Class="w-100" />
+                                <ValidationMessage For= "@(() =>_Movie.ReleaseDate)"/>
+                            </div>
+                        </div>
+                             <div class="col">
+                                  <div class="form-group">
+                                    <label>Precio de ticket</label>
+                                    <InputNumber type="number" @bind-Value=_Movie.TicketPrice class="form-control" placeholder="Precio de boleta"></InputNumber>
+                                    <ValidationMessage For= "@(() => _Movie.TicketPrice)"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                           <label>Sinopsis</label>
+                            <InputTextArea type="text" @bind-Value=_Movie.Sinopsis class="form-control" placeholder="Sinopsis"></InputTextArea>
+                            <ValidationMessage For= "@(() => _Movie.Sinopsis)"/>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <label>Imagen</label>
+                        <InputFile OnChange="@HandleFileSelected" class="form-control"></InputFile>
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                             @if(_Movie.Photo != null){
+                            
+                              <img src="@_Movie.Photo" style="width: 70%; height: 270px" class="img-fluid mt-2"/>   
+                               }
+                        </div>
+                        
+                    </div>
+                </div>
+                 @if (IsValid)
+                {
+                    <div class="alert alert-warning mt-2" role="alert">
+                        Pelicula Editada!
+                    </div>
+                }
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+                    <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                 </div>
+          </EditForm>
+      </div>
+           
+        </div>
+  </div>
+</div>
+
+<!-- Modal eliminar-->
+<div class="modal fade" id="ModalDelete" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Eliminar pelicula</h5>
+      </div>
+      <div class="modal-body">
+       <h2>Esta seguro que desea eliminar la pelicula @_Movie.Name?</h2>
+        @if (IsValid)
+        {
+            <div class="alert alert-warning mt-2" role="alert">
+                 Pelicula Eliminada!
+            </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => IsValid = false)">Cerrar</button>
+        <button type="button" class="btn btn-danger" @onclick="DeleteMovie">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+@code {
+    RadzenDataGrid<Movie> GridMovie;
+    List<Movie> Movies;
+    List<Movie> CsvData = new List<Movie>();
+    bool IsValid = false;
+    Movie _Movie = new Movie();
+    DateTime? value = DateTime.Now;
+    protected override async Task OnInitializedAsync()
+    {
+        Movies = await Http.GetFromJsonAsync<List<Movie>>("https://localhost:7297/api/Movies");
+    }
+    void OnChange()
+    {
+        _Movie.ReleaseDate = value.Value;
+    }
+    void fillData(Movie movie)
+    {
+        _Movie = movie;
+    }
+    async Task  HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        IBrowserFile imgFile = e.File;
+        var buffers = new byte[imgFile.Size];
+        await imgFile.OpenReadStream().ReadAsync(buffers);
+        string imageType = imgFile.ContentType;
+        _Movie.Photo = $"data:{imageType};base64,{Convert.ToBase64String(buffers)}";
+
+    }
+    async Task SendMovie()
+    {
+        try
+        {
+            string json = JsonConvert.SerializeObject(_Movie);
+            StringContent httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var responses = await Http.PostAsync("https://localhost:7297/api/Movies", httpContent);
+            await Reload();
+            _Movie = new Movie();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+    async Task EditMovie()
+    {
+        try
+        {
+            string json = JsonConvert.SerializeObject(_Movie);
+            StringContent httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var responses = await Http.PutAsync("https://localhost:7297/api/Movies", httpContent);
+            await Reload();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+    async Task DeleteMovie()
+    {
+        try
+        {
+            Movies.Remove(_Movie);
+            var responses = await Http.DeleteAsync($"https://localhost:7297/api/Movies/{_Movie.Id}");
+            await Reload();
+            IsValid = true;
+        }
+        catch
+        {
+            IsValid = false;
+        }
+    }
+    async Task Reload()
+    {
+        Movies = await Http.GetFromJsonAsync<List<Movie>>("https://localhost:7297/api/Movies");
+        await GridMovie.Reload();
+    }
+    private void ExportarCSV()
+    {
+        CsvData.Clear();
+        foreach (var i in Movies)
+        {
+                CsvData.Add(i);
+        }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var writer = new StreamWriter(memoryStream))
+                {
+                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+                    {
+                        csv.WriteRecords(CsvData);
+                    }
+
+                    var arr = memoryStream.ToArray();
+                    JSRuntime.InvokeAsync<object>("saveAsFile",
+                    "peliculas.csv",
+                    Convert.ToBase64String(arr));
+                }
+            }
+    }
+}
