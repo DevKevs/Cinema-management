@@ -27,7 +27,7 @@
         else
         {
             <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" @ref="GridMovie" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
-        Data="@Movies" TItem="Movie" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        Data="@Movies" TItem="Movie" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" style="z-index:0">
         <Columns>
             <RadzenDataGridColumn TItem="Movie" Property="Name" Title="Titulo" Frozen="true" Width="70px" />
             <RadzenDataGridColumn TItem="Movie" Property="ReleaseDate" Title="Estreno" Width="60px"/>
